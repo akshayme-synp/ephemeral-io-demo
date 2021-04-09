@@ -1,84 +1,135 @@
-name: "Synopsys Intelligent Security Scan"
+# This is a basic workflow to help you get started with Actions
 
+name: synopsys_IO
+
+# Controls when the action will run. 
 on:
+  # Triggers the workflow on push or pull request events but only for the main branch
   push:
-    branches: [ master ]
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  analyze:
-    name: Analyze
+  # This workflow contains a single job called "build"
+  build:
+    # The type of runner that the job will run on
     runs-on: ubuntu-latest
-    
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v2
-      with:
-        # We must fetch at least the immediate parents so that if this is
-        # a pull request then we can checkout the head.
-        fetch-depth: 2
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          # We must fetch at least the immediate parents so that if this is
+          # a pull request then we can checkout the head.
+          fetch-depth: 2
 
-    # If this run was triggered by a pull request event, then checkout
-    # the head of the pull request instead of the merge commit.
-    - run: git checkout HEAD^2
-      if: ${{ github.event_name == 'pull_request' }}
-    
-    - name: Start IO Server
-      run: |
-        docker login --username rahulguna10 --password ${{secrets.DOCKER_TOKEN}}
-        docker pull rahulguna10/io-iq:2021-01
-        docker pull rahulguna10/io-workflowengine:2021-01
-        docker run --name io-iq -p 9090:9090 -e spring.datasource.url=${{secrets.POSTGRES_SERVER}} -e io.datasource.type=sql rahulguna10/io-iq:2021-01 &
-        docker run --name io-workflowengine -p 9091:9091 rahulguna10/io-workflowengine:2021-01 &
-    
-    - name: Check IO Server Status
-      run: | 
-        sleep 45
-        curl http://localhost:9090/actuator/health
-        curl http://localhost:9091/actuator/health
-    
-    - name: Synopsys Intelligent Security Scan
-      id: prescription
-      uses: synopsys-sig/intelligent-security-scan@398f5a2fcc27ca9a1b192129c5254a44b0d11a7c
-      with:
-        additionalWorkflowArgs: --persona=developer --release.type=minor --sast.rescan.threshold=0  --sca.rescan.threshold=0 
-                  --polaris.url=${{secrets.ORG_POLARIS_SERVER_URL}} --polaris.token=${{secrets.ORG_POLARIS_ACCESS_TOKEN}} 
-                  --sensitive.package.pattern='.*(\\+\\+\\+.*(com\\/example\\/app)).*'
-        stage: "IO"
-    
-    # Please note that the ID in previous step was set to prescription
-    # in order for this logic to work also make sure that POLARIS_ACCESS_TOKEN
-    # is defined in settings
-    - name: Static Analysis with Polaris
-      run: |
-          export POLARIS_SERVER_URL=${{ secrets.ORG_POLARIS_SERVER_URL}}
-          export POLARIS_ACCESS_TOKEN=${{ secrets.ORG_POLARIS_ACCESS_TOKEN}}
-          wget -q ${{ secrets.ORG_POLARIS_SERVER_URL}}/api/tools/polaris_cli-linux64.zip
-          unzip -j polaris_cli-linux64.zip -d /tmp
-          /tmp/polaris analyze -w
-    
-    # Please note that the ID in previous step was set to prescription
-    # in order for this logic to work
-    - name: Software Composition Analysis with Black Duck
-      uses: blackducksoftware/github-action@v2
-      with:
-         args: '--blackduck.url="${{ secrets.ORG_BLACKDUCK_URL}}" --blackduck.api.token="${{ secrets.ORG_BLACKDUCK_TOKEN}}" --detect.tools="SIGNATURE_SCAN,DETECTOR"'
-    
-    - name: Synopsys Intelligent Security Scan
-      uses: synopsys-sig/intelligent-security-scan@398f5a2fcc27ca9a1b192129c5254a44b0d11a7c
-      with:
-        additionalWorkflowArgs: --slack.channel.id=C015LGE7RRQ --slack.token=${{secrets.ORG_SLACK_TOKEN}} 
-                --IS_SAST_ENABLED=true --IS_SCA_ENABLED=true 
-                --polaris.project.name=sig-devsecops/github-io-sample --polaris.url=${{secrets.ORG_POLARIS_SERVER_URL}} --polaris.token=${{secrets.ORG_POLARIS_ACCESS_TOKEN}} 
-                --blackduck.project.name=github-io-sample:1.0.0 --blackduck.url=${{secrets.ORG_BLACKDUCK_URL}} --blackduck.api.token=${{secrets.ORG_BLACKDUCK_TOKEN}}
-        stage: "WORKFLOW"
-    
-    - name: Upload SARIF Report
-      uses: github/codeql-action/upload-sarif@v1
-      with:
-        # Path to SARIF file relative to the root of the repository
-        sarif_file: workflowengine-results.sarif.json
+      # If this run was triggered by a pull request event, then checkout
+      # the head of the pull request instead of the merge commit.
+      - run: git checkout HEAD^2
+        if: ${{ github.event_name == 'pull_request' }}
 
-    - name: Stop IO Servers
-      run: |
-        docker container stop io-iq
-        docker container stop io-workflowengine
+      - name: Start IO Server
+        run: |
+          docker login --username akshayme --password ${{secrets.DOCKER_TOKEN}}
+          docker pull akshayme/io-ioiq:1.0.314
+          docker pull akshayme/io-workflowengine:1.0.2107
+          docker run --name io-iq -p 9090:9090 -e spring.datasource.url=${{secrets.POSTGRES_SERVER}} akshayme/io-ioiq:1.0.314 &
+          docker run --name io-workflowengine -p 9091:9091 akshayme/io-workflowengine:1.0.2107 &
+      
+      - name: Check IO Server Status
+        run: | 
+          sleep 45
+          curl http://localhost:9090/actuator/health
+          curl http://localhost:9091/actuator/health
+      
+      - name: Synopsys Intelligent Security Scan
+        id: prescription
+        uses: synopsys-sig/intelligent-security-scan@v1.0.3
+        with:
+          additionalWorkflowArgs: --persona=developer --release.type=major 
+                    --polaris.url=${{secrets.ORG_POLARIS_SERVER_URL}} --polaris.token=${{secrets.ORG_POLARIS_ACCESS_TOKEN}} 
+                    --sensitive.package.pattern='.*(\\+\\+\\+.*(com\\/example\\/app)).*'
+          stage: "IO"
+      
+      # Please note that the ID in previous step was set to prescription
+      # in order for this logic to work also make sure that POLARIS_ACCESS_TOKEN
+      # is defined in settings
+      - name: Static Analysis with Polaris
+        if: ${{steps.prescription.outputs.sastScan == 'true' }}
+        run: |
+            export POLARIS_SERVER_URL=${{ secrets.ORG_POLARIS_SERVER_URL}}
+            export POLARIS_ACCESS_TOKEN=${{ secrets.ORG_POLARIS_ACCESS_TOKEN}}
+            wget -q ${{ secrets.ORG_POLARIS_SERVER_URL}}/api/tools/polaris_cli-linux64.zip
+            unzip -j polaris_cli-linux64.zip -d /tmp
+            /tmp/polaris analyze -w
+      
+      # Please note that the ID in previous step was set to prescription
+      # in order for this logic to work
+      - name: Software Composition Analysis with Black Duck
+        if: ${{steps.prescription.outputs.scaScan == 'true' }}
+        uses: blackducksoftware/github-action@v2
+        with:
+          args: '--blackduck.url="${{ secrets.ORG_BLACKDUCK_URL}}" --blackduck.api.token="${{ secrets.ORG_BLACKDUCK_TOKEN}}" --detect.tools="SIGNATURE_SCAN,DETECTOR"'
+      
+      # # Runs a single command using the runners shell
+      # - name: Black Duck Scanner
+      # # You may pin to the exact commit or the version.
+      # # uses: philips-labs/blackduck-scanner-action@74c7f93e4e4c217cabae4c604270646c755dab1f
+      #   uses: philips-labs/blackduck-scanner-action@v1
+      #   with:
+      #     # Blackduck project name
+      #     projectName: 
+      #     # Blackduck project version prefix
+      #     versionPrefix: 
+      #     # Blackduck url
+      #     url: 
+      #     # Blackduck token
+      #     token: 
+      #     # sourcePath
+      #     sourcePath: 
+      #     # Extra arguments that will be passed to the detector
+      #     extraArgs: # optional
+
+      # - name: Synopsys Intelligent Security Scan
+      # # You may pin to the exact commit or the version.
+      # # uses: synopsys-sig/intelligent-security-scan@48eedfcd42bc342a294dc495ac452797b2d9ff08
+      #   uses: synopsys-sig/intelligent-security-scan@v1
+      #   with:
+      #     # The server Host URL for Intelligent Scan Engine eg http://localhost:1111 or https://21b7.ngrok.io
+      #     ioServerUrl: # default is http://localhost:9090
+      #     # The server password for Intelligent Scan Engine
+      #     ioServerToken: # optional, default is 
+      #     # HTTP URL to download IO Manifest file synopsys-io.yml
+      #     ioManifestUrl: # optional
+      #     # The server Host URL for Intelligent Scan Workflow Engine eg http://localhost:1111 or https://21b7.ngrok.io
+      #     workflowServerUrl: # default is http://localhost:9091
+      #     # The workflow jar version to retrieve for Intelligent Scan Engine
+      #     workflowVersion: # optional, default is 2021.01
+      #     # Additional arguments required for workflow engine arguments
+      #     additionalWorkflowArgs: 
+      #     # Additional arguments required for workflow engine arguments
+      #     stage: # default is IO
+      
+      - name: Synopsys Intelligent Security Scan
+        if: ${{ steps.prescription.outputs.sastScan == 'true' || steps.prescription.outputs.scaScan == 'true' }}
+        uses: synopsys-sig/intelligent-security-scan@v1.0.3
+        with:
+          additionalWorkflowArgs: --slack.channel.id=C015LGE7RRQ --slack.token=${{secrets.ORG_SLACK_TOKEN}} 
+                  --IS_SAST_ENABLED=${{steps.prescription.outputs.sastScan}} --IS_SCA_ENABLED=${{steps.prescription.outputs.scaScan}} 
+                  --polaris.project.name=sig-devsecops/github-io-sample --polaris.url=${{secrets.ORG_POLARIS_SERVER_URL}} --polaris.token=${{secrets.ORG_POLARIS_ACCESS_TOKEN}} 
+                  --blackduck.project.name=github-io-sample:1.0.0 --blackduck.url=${{secrets.ORG_BLACKDUCK_URL}} --blackduck.api.token=${{secrets.ORG_BLACKDUCK_TOKEN}}
+          stage: "WORKFLOW"
+      
+      - name: Upload SARIF file
+        if: ${{steps.prescription.outputs.sastScan == 'true' }}
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: workflowengine-results.sarif.json
