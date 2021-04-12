@@ -50,7 +50,7 @@ jobs:
         id: prescription
         uses: synopsys-sig/intelligent-security-scan@v1.0.3
         with:
-          additionalWorkflowArgs: --persona=developer --release.type=major 
+          additionalWorkflowArgs: --persona=developer --release.type=minor 
                     --polaris.url=${{secrets.ORG_POLARIS_SERVER_URL}} --polaris.token=${{secrets.ORG_POLARIS_ACCESS_TOKEN}} 
                     --sensitive.package.pattern='.*(\\+\\+\\+.*(com\\/example\\/security)).*'
           stage: "IO"
