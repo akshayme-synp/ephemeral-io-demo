@@ -1,4 +1,20 @@
 # This is a basic workflow to help you get started with Actions
+# Instructions:
+# Please add following repository secrets by clicking settings > Secrets > New repository secret
+# DOCKER_USERNAME
+# DOCKER_TOKEN
+# BLACKDUCK_TOKEN
+# BLACKDUCK_URL
+# POLARIS_SERVER_URL
+# POLARIS_ACCESS_TOKEN
+# SLACK_CHANNEL_ID
+# SLACK_TOKEN
+# POSTGRES_SERVER
+# POSTGRES_PASSWORD
+# POSTGRES_USERNAME
+
+# Update docker commands by replacing placeholders <<insert ioiq docker image location>> and <<insert ioworkflowengine docker image location>> with 
+# docker image location for io-iq and io-workflowengine respectively in this file.
 
 name: synopsys_IO
 
@@ -34,10 +50,11 @@ jobs:
 
       - name: Start IO Server
         run: |
-          docker login --username akshayme --password ${{secrets.DOCKER_TOKEN}}
+          docker login --username ${{secrets.DOCKER_USERNAME}} --password ${{secrets.DOCKER_TOKEN}}
           docker pull akshayme/io-ioiq:1.0.314
           docker pull akshayme/io-workflowengine:1.0.2107
-          docker run --name io-iq -p 9090:9090 -e spring.datasource.url=${{secrets.POSTGRES_SERVER}} -e spring.datasource.username=${{secrets.POSTGRES_USERNAME}} -e spring.datasource.password=${{secrets.POSTGRES_PASSWORD}} akshayme/io-ioiq:1.0.314 &
+          docker run --name postgres-io -p 5432:5432 -e POSTGRES_USER=${{secrets.POSTGRES_USERNAME}} -e POSTGRES_PASSWORD=${{secrets.POSTGRES_PASSWORD}} -e POSTGRES_DB=io-db postgres:12
+          docker run --name io-iq -p 9090:9090 -e spring.datasource.url=jdbc:postgresql://localhost:5432/io-db -e spring.datasource.username=${{secrets.POSTGRES_USERNAME}} -e spring.datasource.password=${{secrets.POSTGRES_PASSWORD}} akshayme/io-ioiq:1.0.314 &
           docker run --name io-workflowengine -p 9091:9091 akshayme/io-workflowengine:1.0.2107 &
       
       - name: Check IO Server Status
@@ -50,8 +67,8 @@ jobs:
         id: prescription
         uses: synopsys-sig/intelligent-security-scan@v1.0.3
         with:
-          additionalWorkflowArgs: --persona=developer --release.type=minor 
-                    --polaris.url=${{secrets.ORG_POLARIS_SERVER_URL}} --polaris.token=${{secrets.ORG_POLARIS_ACCESS_TOKEN}} 
+          additionalWorkflowArgs: --persona=developer --release.type=major 
+                    --polaris.url=${{secrets.POLARIS_SERVER_URL}} --polaris.token=${{secrets.POLARIS_ACCESS_TOKEN}} 
                     --sensitive.package.pattern='.*(\\+\\+\\+.*(com\\/example\\/security)).*'
           stage: "IO"
       
@@ -61,9 +78,9 @@ jobs:
       - name: Static Analysis with Polaris
         if: ${{steps.prescription.outputs.sastScan == 'true' }}
         run: |
-            export POLARIS_SERVER_URL=${{ secrets.ORG_POLARIS_SERVER_URL}}
-            export POLARIS_ACCESS_TOKEN=${{ secrets.ORG_POLARIS_ACCESS_TOKEN}}
-            wget -q ${{ secrets.ORG_POLARIS_SERVER_URL}}/api/tools/polaris_cli-linux64.zip
+            export POLARIS_SERVER_URL=${{ secrets.POLARIS_SERVER_URL}}
+            export POLARIS_ACCESS_TOKEN=${{ secrets.POLARIS_ACCESS_TOKEN}}
+            wget -q ${{ secrets.POLARIS_SERVER_URL}}/api/tools/polaris_cli-linux64.zip
             unzip -j polaris_cli-linux64.zip -d /tmp
             /tmp/polaris analyze -w
       
@@ -73,16 +90,16 @@ jobs:
         if: ${{steps.prescription.outputs.scaScan == 'true' }}
         uses: blackducksoftware/github-action@v2
         with:
-          args: '--blackduck.url="${{ secrets.ORG_BLACKDUCK_URL}}" --blackduck.api.token="${{ secrets.ORG_BLACKDUCK_TOKEN}}" --detect.tools="SIGNATURE_SCAN,DETECTOR"'
+          args: '--blackduck.url="${{ secrets.BLACKDUCK_URL}}" --blackduck.api.token="${{ secrets.BLACKDUCK_TOKEN}}" --detect.tools="SIGNATURE_SCAN,DETECTOR"'
       
       - name: Synopsys Intelligent Security Scan
         if: ${{ steps.prescription.outputs.sastScan == 'true' || steps.prescription.outputs.scaScan == 'true' }}
         uses: synopsys-sig/intelligent-security-scan@v1.0.3
         with:
-          additionalWorkflowArgs: --slack.channel.id=${{secrets.ORG_SLACK_CHANNEL_ID}} --slack.token=${{secrets.ORG_SLACK_TOKEN}} 
+          additionalWorkflowArgs: --slack.channel.id=${{secrets.SLACK_CHANNEL_ID}} --slack.token=${{secrets.SLACK_TOKEN}} 
                   --IS_SAST_ENABLED=${{steps.prescription.outputs.sastScan}} --IS_SCA_ENABLED=${{steps.prescription.outputs.scaScan}} 
-                  --polaris.project.name=sig-devsecops/github-io-sample --polaris.url=${{secrets.ORG_POLARIS_SERVER_URL}} --polaris.token=${{secrets.ORG_POLARIS_ACCESS_TOKEN}} 
-                  --blackduck.project.name=github-io-sample:1.0.0 --blackduck.url=${{secrets.ORG_BLACKDUCK_URL}} --blackduck.api.token=${{secrets.ORG_BLACKDUCK_TOKEN}}
+                  --polaris.project.name=<<insert polaris projectname>> --polaris.url=${{secrets.POLARIS_SERVER_URL}} --polaris.token=${{secrets.POLARIS_ACCESS_TOKEN}} 
+                  --blackduck.project.name=<<insert blackduck projectname>> --blackduck.url=${{secrets.BLACKDUCK_URL}} --blackduck.api.token=${{secrets.BLACKDUCK_TOKEN}}
           stage: "WORKFLOW"
       
       - name: Upload SARIF file
