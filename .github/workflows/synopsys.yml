@@ -53,7 +53,8 @@ jobs:
           docker login --username ${{secrets.DOCKER_USERNAME}} --password ${{secrets.DOCKER_TOKEN}}
           docker pull akshayme/io-ioiq:1.0.314
           docker pull akshayme/io-workflowengine:1.0.2107
-          docker run --name postgres-io -p 5432:5432 -e POSTGRES_USER=${{secrets.POSTGRES_USERNAME}} -e POSTGRES_PASSWORD=${{secrets.POSTGRES_PASSWORD}} -e POSTGRES_DB=io-db postgres:12
+          docker run --name postgres-io -p 5432:5432 -e POSTGRES_USER=${{secrets.POSTGRES_USERNAME}} -e POSTGRES_PASSWORD=${{secrets.POSTGRES_PASSWORD}} -e POSTGRES_DB=io-db postgres:12 &
+          sleep 30
           docker run --name io-iq -p 9090:9090 -e spring.datasource.url=jdbc:postgresql://localhost:5432/io-db -e spring.datasource.username=${{secrets.POSTGRES_USERNAME}} -e spring.datasource.password=${{secrets.POSTGRES_PASSWORD}} akshayme/io-ioiq:1.0.314 &
           docker run --name io-workflowengine -p 9091:9091 akshayme/io-workflowengine:1.0.2107 &
       
