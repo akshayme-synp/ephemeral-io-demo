@@ -1,7 +1,7 @@
 version: "1"
 install:
   coverity:
-    version: latest
+    version: default
 project:
   name: "sig-devsecops/github-io-sample"
   branch: "origin/master"
