@@ -67,7 +67,7 @@ connectors:
 buildbreaker:
 - activityname: sast
   status:
-  - open
+  - new
   overallseverity:
   - high
   categories:
