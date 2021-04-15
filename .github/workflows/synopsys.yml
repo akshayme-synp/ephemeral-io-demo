@@ -68,7 +68,7 @@ jobs:
         id: prescription
         uses: synopsys-sig/intelligent-security-scan@v1.0.3
         with:
-          additionalWorkflowArgs: --persona=developer --release.type=minor 
+          additionalWorkflowArgs: --persona=developer --release.type=major 
                     --polaris.url=${{secrets.POLARIS_SERVER_URL}} --polaris.token=${{secrets.POLARIS_ACCESS_TOKEN}} 
                     --sensitive.package.pattern='.*(\\+\\+\\+.*(com\\/example\\/security)).*'
           stage: "IO"
@@ -76,22 +76,22 @@ jobs:
       # Please note that the ID in previous step was set to prescription
       # in order for this logic to work also make sure that POLARIS_ACCESS_TOKEN
       # is defined in settings
-      - name: Static Analysis with Polaris
-        if: ${{steps.prescription.outputs.sastScan == 'true' }}
-        run: |
-            export POLARIS_SERVER_URL=${{ secrets.POLARIS_SERVER_URL}}
-            export POLARIS_ACCESS_TOKEN=${{ secrets.POLARIS_ACCESS_TOKEN}}
-            wget -q ${{ secrets.POLARIS_SERVER_URL}}/api/tools/polaris_cli-linux64.zip
-            unzip -j polaris_cli-linux64.zip -d /tmp
-            /tmp/polaris analyze -w
+#       - name: Static Analysis with Polaris
+#         if: ${{steps.prescription.outputs.sastScan == 'true' }}
+#         run: |
+#             export POLARIS_SERVER_URL=${{ secrets.POLARIS_SERVER_URL}}
+#             export POLARIS_ACCESS_TOKEN=${{ secrets.POLARIS_ACCESS_TOKEN}}
+#             wget -q ${{ secrets.POLARIS_SERVER_URL}}/api/tools/polaris_cli-linux64.zip
+#             unzip -j polaris_cli-linux64.zip -d /tmp
+#             /tmp/polaris analyze -w
       
       # Please note that the ID in previous step was set to prescription
       # in order for this logic to work
-      - name: Software Composition Analysis with Black Duck
-        if: ${{steps.prescription.outputs.scaScan == 'true' }}
-        uses: blackducksoftware/github-action@v2
-        with:
-          args: '--blackduck.url="${{ secrets.BLACKDUCK_URL}}" --blackduck.api.token="${{ secrets.BLACKDUCK_TOKEN}}" --detect.tools="SIGNATURE_SCAN,DETECTOR" --detect.project.name="ephemeral-io-demo" --detect.project.version.name="1.0.0"'
+#       - name: Software Composition Analysis with Black Duck
+#         if: ${{steps.prescription.outputs.scaScan == 'true' }}
+#         uses: blackducksoftware/github-action@v2
+#         with:
+#           args: '--blackduck.url="${{ secrets.BLACKDUCK_URL}}" --blackduck.api.token="${{ secrets.BLACKDUCK_TOKEN}}" --detect.tools="SIGNATURE_SCAN,DETECTOR" --detect.project.name="ephemeral-io-demo" --detect.project.version.name="1.0.0"'
       
       - name: Synopsys Intelligent Security Scan
         if: ${{ steps.prescription.outputs.sastScan == 'true' || steps.prescription.outputs.scaScan == 'true' }}
