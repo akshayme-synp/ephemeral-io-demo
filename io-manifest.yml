@@ -73,8 +73,8 @@ buildbreaker:
   categories:
   - name: Cross-site request forgery
     severity: high
-  - name: Resource leak
-    severity: high
+  - name: Use of hard-coded security token
+    severity: medium
 - activityname: sca
   status:
   - new
@@ -83,6 +83,7 @@ buildbreaker:
   categories:
   - name: cve-2020-25638
     severity: medium
+
 # for WF client
 tool_information:
 - tool_name: polaris
