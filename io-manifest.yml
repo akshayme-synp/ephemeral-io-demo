@@ -73,8 +73,10 @@ buildbreaker:
   categories:
   - name: Cross-site request forgery
     severity: high
-  - name: Use of hard-coded security token
+  - name: use of hard-coded security token
     severity: medium
+  - name: trust boundary violation
+    severity: low
 - activityname: sca
   status:
   - new
